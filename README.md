@@ -21,7 +21,12 @@ pip install -r requirements.txt
 
 ### Ch02：文本数据处理 (Working with Text Data)
 
-正在进行中...
+- ✅ `simpleTokenizer.py` - 简单分词器实现
+- ✅ `tokenizer.py` - GPT2分词器测试
+- ✅ `dataLoader.py` - PyTorch数据加载器
+- ✅ `embedding.py` - 文本嵌入示例
+- ✅ `text-prepare.py` - 文本预处理
+- ✅ `test.py` - 基础测试
 
 ## 📝 要求
 
