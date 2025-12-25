@@ -10,6 +10,9 @@ dataloader = create_dataloder_v1(
     raw_text, batch_size = 8, max_length = max_length, stride = max_length, shuffle = False
 )
 
+for input_batch, target_batch in dataloader:
+    pass
+print(input_batch.shape, target_batch.shape)
 
 preprocessed = re.split(r'([,.:;?_!"()\']|--|\s)', raw_text)
 preprocessed = [item.strip() for item in preprocessed if item.strip()]
