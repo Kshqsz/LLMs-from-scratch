@@ -28,6 +28,26 @@ pip install -r requirements.txt
 - ✅ `text-prepare.py` - 文本预处理
 - ✅ `test.py` - 基础测试
 
+### Ch03：注意力机制 (Coding Attention Mechanisms)
+
+- ✅ `simpleSelfAttention.py` - 简单自注意力机制
+- ✅ `causalAttention.py` - 因果注意力实现
+- ✅ `multiHeadAttention.py` - 多头注意力机制
+
+### Ch04：实现GPT模型 (Implementing GPT Model)
+
+- ✅ `gptModel.py` - GPT模型架构实现
+
+**GPT模型整体架构：**
+
+<img src="image/README/1766658357442.png" width="600" alt="GPT Model Architecture"/>
+
+**Transformer Block内部结构：**
+
+<img src="image/README/1766658431287.png" width="600" alt="Transformer Block Structure"/>
+
+- ✅ `previous_chapters.py` - 前面章节的集成
+
 ## 📝 要求
 
 - Python 3.10
