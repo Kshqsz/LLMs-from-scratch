@@ -28,7 +28,23 @@ pip install -r requirements.txt
 - ✅ `text-prepare.py` - 文本预处理
 - ✅ `test.py` - 基础测试
 
+**Token嵌入层 (Embedding Layer)：**
+
+<img src="image/README/1766658803148.png" width="600" alt="Embedding Layer"/>
+
 ### Ch03：注意力机制 (Coding Attention Mechanisms)
+
+**注意力机制基础概念：**
+
+<img src="image/README/1766658617366.png" width="600" alt="Attention Mechanism"/>
+
+**因果注意力机制 (Causal Attention) 流程：**
+
+<img src="image/README/1766658678226.png" width="600" alt="Causal Attention Flow"/>
+
+**多头注意力机制 (Multi-Head Attention)：**
+
+<img src="image/README/1766658727531.png" width="600" alt="Multi-Head Attention"/>
 
 - ✅ `simpleSelfAttention.py` - 简单自注意力机制
 - ✅ `causalAttention.py` - 因果注意力实现
