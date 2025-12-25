@@ -1,4 +1,5 @@
 import torch
+import torch.nn as nn
 
 inputs = torch.tensor(
   [[0.43, 0.15, 0.89], # Your     (x^1)
@@ -8,3 +9,43 @@ inputs = torch.tensor(
    [0.77, 0.25, 0.10], # one      (x^5)
    [0.05, 0.80, 0.55]] # step     (x^6)
 )
+
+# attention_scores = inputs @ inputs.T
+# attention_weights = torch.softmax(attention_scores, dim = -1)
+
+# all_context_vecs = attention_weights @ inputs
+# print(attention_scores)
+# print(attention_weights)
+# print(all_context_vecs)
+
+class SelfAttention(nn.Module):
+    def __init__(self, d_in, d_out, qkv_bias = False):
+        super().__init__()
+        self.W_query = nn.Linear(d_in, d_out, bias = qkv_bias)
+        self.W_key = nn.Linear(d_in, d_out, bias = qkv_bias)
+        self.W_value = nn.Linear(d_in, d_out, bias = qkv_bias)
+      
+    def forward(self, x):
+      queries = self.W_query(x)
+      keys = self.W_key(x)
+      values = self.W_value(x)
+
+      attention_scores = queries @ keys.transpose(-1, -2)
+      attention_weights = torch.softmax(attention_scores / keys.shape[-1]**0.5, dim = -1)
+      context_vecs = attention_weights @ values
+      return context_vecs
+  
+torch.manual_seed(789)
+
+d_in = inputs.shape[1]
+d_out = 2
+sa = SelfAttention(d_in, d_out)
+print(sa(inputs))
+
+queires = sa.W_query(inputs)
+keys = sa.W_key(inputs)
+values = sa.W_value(inputs)
+
+attention_scores = queires @ keys.transpose(-1, -2)
+attention_weights = torch.softmax(attention_scores / d_out ** 0.5, dim = -1)
+print(attention_weights)
