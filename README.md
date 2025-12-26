@@ -19,6 +19,10 @@ pip install -r requirements.txt
 
 ## 📂 项目进度
 
+**项目整体目标流程图：**
+
+<img src="image/README/1766739664902.png" width="700" alt="Project Overview"/>
+
 ### Ch02：文本数据处理 (Working with Text Data)
 
 - ✅ `simpleTokenizer.py` - 简单分词器实现
@@ -63,6 +67,20 @@ pip install -r requirements.txt
 <img src="image/README/1766658431287.png" width="600" alt="Transformer Block Structure"/>
 
 - ✅ `previous_chapters.py` - 前面章节的集成
+
+### Ch05：无标签数据预训练 (Pretraining on Unlabeled Data)
+
+- ✅ `previous_chapters.py` - 前四章代码集成优化
+- ✅ `generate_test.py` - 文本生成测试
+- ✅ `loss_calc.py` - 损失函数计算
+
+**预训练目标：**
+
+<img src="image/README/1766739399269.png" width="600" alt="Loss Calculation and Optimization"/>
+
+**损失函数计算详解：**
+
+<img src="image/README/1766739380311.png" width="600" alt="Loss Calculation Details"/>
 
 ## 📝 要求
 
