@@ -22,7 +22,7 @@ class GPTDatasetV1(Dataset):
     def __getitem__(self, index):
         return self.input_ids[index], self.target_ids[index]
 
-def create_dataloder_v1(txt, batch_size = 4, max_length = 256, stride = 128, 
+def create_dataloader_v1(txt, batch_size = 4, max_length = 256, stride = 128, 
                         shuffle = True, drop_last = True, 
                         num_workers = 0):
     tokenizer = tiktoken.get_encoding("gpt2")
@@ -39,7 +39,7 @@ def create_dataloder_v1(txt, batch_size = 4, max_length = 256, stride = 128,
 
 
 # ch03
-class MultiHeadAttenion(nn.Module):
+class MultiHeadAttention(nn.Module):
     def __init__(self, d_in, d_out, context_length, num_heads, dropout, qkv_bias = False):
         super().__init__()
         
