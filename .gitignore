@@ -63,9 +63,12 @@ data/
 # Models
 models/
 checkpoints/
+gpt2/
+gpt2-*/
 *.pt
 *.pth
 *.onnx
+*.safetensors
 
 # Logs
 logs/

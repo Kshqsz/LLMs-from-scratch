@@ -28,10 +28,8 @@ split_idx = int(train_ratio * len(text_data))
 train_data = text_data[:split_idx]
 val_data = text_data[split_idx:]
 
-print(f"train_data : {len(train_data)}")
-print(f"val_data : {len(val_data)}")
-
-torch.manual_seed(123)
+# print(f"train_data : {len(train_data)}")
+# print(f"val_data : {len(val_data)}")
 
 train_loader = create_dataloader_v1(
     txt = train_data,
@@ -139,7 +137,7 @@ tokenizer = tiktoken.get_encoding("gpt2")
 device = torch.device("mps" if torch.mps.is_available() else "cpu")
 print(device)
 
-torch.manual_seed(123)
+
 model = GPTModel(GPT_CONFIG_124M)
 model.to(device)
 optimizer = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
@@ -151,14 +149,96 @@ train_losses, val_losses, tokens_seen = train_model_simple(
 )
 
 
+
+# token_ids = generate_text_simple(
+#     model = model, 
+#     idx = text_to_token_ids("Every effort moves you", tokenizer),
+#     max_new_tokens = 50,
+#     context_size = GPT_CONFIG_124M["context_length"]
+# )
+
+# print("Output text: \n", token_ids_to_text(token_ids, tokenizer))
+
 model.to("cpu")
 model.eval()
 
-token_ids = generate_text_simple(
-    model = model, 
-    idx = text_to_token_ids("Every effort moves you", tokenizer),
-    max_new_tokens = 50,
-    context_size = GPT_CONFIG_124M["context_length"]
+vocab = { 
+    "closer": 0,
+    "every": 1, 
+    "effort": 2, 
+    "forward": 3,
+    "inches": 4,
+    "moves": 5, 
+    "pizza": 6,
+    "toward": 7,
+    "you": 8,
+} 
+
+inverse_vocab = {v: k for k, v in vocab.items()}
+
+# Suppose input is "every effort moves you", and the LLM
+# returns the following logits for the next token:
+next_token_logits = torch.tensor(
+    [4.51, 0.89, -1.90, 6.75, 1.63, -1.62, -1.89, 6.28, 1.79]
 )
 
+probas = torch.softmax(next_token_logits, dim=0)
+
+# The next generated token is then as follows:
+# print(inverse_vocab[next_token_id])
+
+next_token_id = torch.multinomial(probas, num_samples = 1).item()
+
+top_k = 3
+top_logits, top_pos = torch.topk(next_token_logits, top_k)
+print(top_logits)
+print(top_pos)
+
+new_logits = torch.where(
+    condition = next_token_logits < top_logits[-1],
+    input = torch.tensor(float("-inf")),
+    other = next_token_logits
+)
+print(new_logits)
+print(torch.softmax(new_logits, dim = -1))
+
+def generate(model, idx, max_new_tokens, context_size, temperature = 0.0, top_k = None, eos_id = None):
+    for _ in range(max_new_tokens):
+        idx_cond = idx[:, -context_size:]
+
+        with torch.no_grad():
+            logits = model(idx_cond)
+        
+        logits = logits[:, -1, :]
+
+        if top_k is not None:
+            top_logits, top_pos = torch.topk(logits, top_k)
+            logits = torch.where(
+                condition = logits < top_logits[:, -1],
+                input = torch.tensor(float("-inf")),
+                other = logits
+            )
+        if temperature > 0.0:
+            logits = logits / temperature
+            probas = torch.softmax(logits, dim = -1)
+            idx_next = torch.multinomial(probas, num_samples = 1)
+        else:
+            idx_next = torch.argmax(logits, dim = -1, keepdim = True)
+        if idx_next == eos_id:
+            break
+        idx = torch.cat((idx, idx_next), dim = 1)
+    return idx
+
+torch.manual_seed(123)
+token_ids = generate(
+    model = model,
+    idx = text_to_token_ids("Every effort moves you", tokenizer),
+    max_new_tokens = 15,
+    context_size = GPT_CONFIG_124M["context_length"],
+    temperature = 1.4,
+    top_k = 25
+)
+
+torch.save(model.state_dict(), "model.pth")
 print("Output text: \n", token_ids_to_text(token_ids, tokenizer))
+
