@@ -73,6 +73,11 @@ pip install -r requirements.txt
 - ✅ `previous_chapters.py` - 前四章代码集成优化
 - ✅ `generate_test.py` - 文本生成测试
 - ✅ `loss_calc.py` - 损失函数计算
+- ✅ `loss_test.py` - 损失函数测试
+- ✅ `gpt_download.py` - GPT模型下载工具
+- ✅ `pretraining.py` - 预训练主程序
+- ✅ `load.py` - 模型加载工具
+- ✅ `temperature_scaling_and_top-k.py` - 文本生成策略优化
 
 **预训练目标：**
 
@@ -82,6 +87,10 @@ pip install -r requirements.txt
 
 <img src="image/README/1766739380311.png" width="600" alt="Loss Calculation Details"/>
 
-## 📝 要求
+**预训练流程详解：**
 
-- Python 3.10
+<img src="image/README/1766910153313.png" width="600" alt="Pretraining Process"/>
+
+**Top-k采样策略示例：**
+
+<img src="image/README/1766910243825.png" width="600" alt="Top-k Sampling Example"/>
