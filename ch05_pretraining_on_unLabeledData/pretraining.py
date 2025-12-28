@@ -16,10 +16,40 @@ GPT_CONFIG_124M = {
     "qkv_bias": False       # Query-Key-Value bias
 }
 
-torch.manual_seed(123)
-model = GPTModel(GPT_CONFIG_124M)
-model.eval()
 
+file_path = "the-verdict.txt"
+
+
+with open(file_path, "r", encoding="utf-8") as file:
+    text_data = file.read()
+
+train_ratio = 0.90
+split_idx = int(train_ratio * len(text_data))
+train_data = text_data[:split_idx]
+val_data = text_data[split_idx:]
+
+print(f"train_data : {len(train_data)}")
+print(f"val_data : {len(val_data)}")
+
+torch.manual_seed(123)
+
+train_loader = create_dataloader_v1(
+    txt = train_data,
+    batch_size = 2,
+    max_length = GPT_CONFIG_124M["context_length"],
+    stride = GPT_CONFIG_124M["context_length"],
+    shuffle = True,
+    drop_last = True
+)
+
+val_loader = create_dataloader_v1(
+    txt = val_data,
+    batch_size = 2,
+    max_length = GPT_CONFIG_124M["context_length"],
+    stride = GPT_CONFIG_124M["context_length"],
+    shuffle = True,
+    drop_last = True
+)
 def text_to_token_ids(text, tokenizer):
     encoded = tokenizer.encode(text, allowed_special = {"<|endoftext|>"})
     encoded_tensor = torch.tensor(encoded).unsqueeze(0)
@@ -29,23 +59,6 @@ def token_ids_to_text(token_ids, tokenizer):
     flat = token_ids.squeeze(0)
     return tokenizer.decode(flat.tolist())
 
-tokenizer = tiktoken.get_encoding("gpt2")
-
-
-file_path = "the-verdict.txt"
-url = "https://raw.githubusercontent.com/rasbt/LLMs-from-scratch/main/ch02/01_main-chapter-code/the-verdict.txt"
-
-if not os.path.exists(file_path):
-    response = requests.get(url, timeout=30)
-    response.raise_for_status()
-    text_data = response.text
-    with open(file_path, "w", encoding="utf-8") as file:
-        file.write(text_data)
-else:
-    with open(file_path, "r", encoding="utf-8") as file:
-        text_data = file.read()
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def calc_loss_batch(input_batch, target_batch, model, device):
     input_batch, target_batch = input_batch.to(device), target_batch.to(device)
@@ -70,7 +83,7 @@ def calc_loss_loader(data_loader, model, device, num_batchs = None):
     return total_loss / num_batchs
 
 
-def train_model_simple(model, train_loader, val_loader, optimizier, device, num_epochs,
+def train_model_simple(model, train_loader, val_loader, optimizer, device, num_epochs,
                        eval_freq, eval_iter, start_context, tokenizer):
     
     train_losses, val_losses, track_tokens_seen = [], [], []
@@ -80,10 +93,10 @@ def train_model_simple(model, train_loader, val_loader, optimizier, device, num_
         model.train()
 
         for input_batch, target_batch in train_loader:
-            optimizier.zero_grad()
+            optimizer.zero_grad()
             loss = calc_loss_batch(input_batch, target_batch, model, device)
             loss.backward()
-            optimizier.step()
+            optimizer.step()
             tokens_seen += input_batch.numel()
             global_step += 1
 
@@ -121,5 +134,21 @@ def generate_and_print_sample(model, tokenizer, device, start_context):
     decoded_text = token_ids_to_text(token_ids, tokenizer)
     print(decoded_text.replace("\n", " "))
     model.train()
+tokenizer = tiktoken.get_encoding("gpt2")
+
+device = torch.device("mps" if torch.mps.is_available() else "cpu")
 print(device)
+device = torch.device("cpu")
+
+
+torch.manual_seed(123)
+model = GPTModel(GPT_CONFIG_124M)
+model.to(device)
+optimizer = torch.optim.AdamW(model.parameters(), lr = 0.0004, weight_decay = 0.1)
+num_epochs = 10
+train_losses, val_losses, tokens_seen = train_model_simple(
+    model, train_loader, val_loader, optimizer, device,
+    num_epochs = num_epochs, eval_freq = 5, eval_iter = 5,
+    start_context = "Every effort moves you", tokenizer = tokenizer
+)
 
