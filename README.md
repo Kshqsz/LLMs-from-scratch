@@ -164,3 +164,32 @@ pip install -r requirements.txt
 **损失和精度计算结果：**
 
 <img src="image/README/1767000933805.png" width="600" alt="Loss and Accuracy Calculation Results"/>
+
+#### 6.7 模型微调 (Finetuning on supervised data)
+
+- ✅ `train_classifier_simple()`：完整的训练循环实现
+
+  - 支持自定义epoch数、评估频率、评估迭代次数
+  - 返回训练/验证损失和精度曲线
+  - 每个epoch后显示精度统计
+- ✅ `evaluate_model()`：评估阶段的模型切换
+
+  - 在评估时切换到eval模式（禁用dropout和BatchNorm更新）
+  - 评估后重新切换回train模式
+- ✅ 优化器配置：`AdamW`（权重衰减0.1，学习率5e-5）
+- ✅ 训练配置：5个epoch，每50步评估一次
+
+**训练循环详细流程：**
+
+<img src="image/README/1767005284011.png" width="600" alt="Training Loop Flow Diagram"/>
+
+上图展示了完整的训练流程：
+
+1. **初始化阶段**：设置模型、优化器、epoch数等
+2. **训练循环**：对每个epoch进行以下操作
+   - 将模型设置为train模式
+   - 遍历所有batch数据
+   - 计算loss → 反向传播 → 优化器更新
+   - 定期进行验证评估
+3. **评估阶段**：在验证集上评估当前模型性能
+4. **统计输出**：每个epoch后打印训练/验证精度
