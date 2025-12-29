@@ -94,3 +94,61 @@ pip install -r requirements.txt
 **Top-k采样策略示例：**
 
 <img src="image/README/1766910243825.png" width="600" alt="Top-k Sampling Example"/>
+
+### Ch06：文本分类微调 (Finetuning for Text Classification)
+
+**项目目标：** 基于预训练的GPT-2模型，使用SMS垃圾短信数据集进行文本分类微调
+
+#### 6.2 数据准备 (Preparing the dataset)
+
+- ✅ 下载并解析SMS垃圾短信数据集
+- ✅ 类别平衡：欠采样多数类（ham）以匹配少数类（spam）数量
+- ✅ 类别编码：将字符串标签映射为整数（ham: 0, spam: 1）
+- ✅ 数据分割：70% 训练集、10% 验证集、20% 测试集
+
+#### 6.3 数据加载器 (Creating data loaders)
+
+- ✅ `SpamDataset` 类实现：
+  - 文本分词和编码
+  - 动态最大长度计算
+  - 填充到统一长度
+- ✅ DataLoader 配置（batch_size=8, shuffle=True）
+- ✅ 数据验证（输入维度: [batch_size, sequence_length]，标签维度: [batch_size]）
+
+#### 6.4 模型初始化 (Initializing a model with pretrained weights)
+
+- ✅ 加载预训练GPT-2小模型（124M参数）
+- ✅ 权重加载验证：生成文本测试
+- ✅ 关键修复：添加 `model.eval()` 确保LayerNorm使用运行时统计
+
+**GPT-2模型配置：**
+
+- vocab_size: 50257
+- context_length: 1024
+- emb_dim: 768
+- n_layers: 12
+- n_heads: 12
+
+#### 6.5 分类头添加 (Adding a classification head)
+
+- ✅ 冻结所有预训练参数：`param.requires_grad = False`
+- ✅ 替换输出层为分类层：`Linear(emb_dim=768, num_classes=2)`
+- ✅ 解冻最后一层和LayerNorm：允许微调
+
+**转移学习策略：** 冻结大部分参数，仅微调最后的transformer块和分类头
+
+#### 6.6 损失和精度计算 (Calculating loss and accuracy)
+
+- ✅ `calc_accuracy_loader()`：计算分类精度
+
+  - 使用最后一个token的logits
+  - 通过argmax获取预测标签
+  - 对比target计算正确率
+- ✅ `calc_loss_batch()`：计算单个batch的交叉熵损失
+- ✅ `calc_loss_loader()`：计算整个data loader的平均损失
+
+**关键指标（未训练状态）：**
+
+- train_accuracy: ~50%（随机基线）
+- val_accuracy: ~50%
+- test_accuracy: ~50%
