@@ -234,12 +234,12 @@ from previous_chapters import (
     token_ids_to_text
 )
 
-text_1 = "Every effort moves you"
+text_1 = "Every effort move you"
 
 token_ids = generate_text_simple(
     model = model,
     idx = text_to_token_ids(text_1, tokenizer),
-    max_new_tokens = 15,
+    max_new_tokens = 30,
     context_size = BASE_CONFIG["context_length"]
 )
 
@@ -261,4 +261,16 @@ print(token_ids_to_text(token_ids, tokenizer))
 print(model)
 
 # 6.5 Adding a classification head
+for param in model.parameters():
+    param.requires_grad = False
 
+
+torch.manual_seed(123)
+num_classes = 2
+model.out_head = torch.nn.Linear(BASE_CONFIG["emb_dim"], num_classes)
+
+print(model)
+
+
+for param in model.trf_blocks[-1].parameters():
+    param.requires_grad = True
