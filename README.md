@@ -115,6 +115,14 @@ pip install -r requirements.txt
 - ✅ DataLoader 配置（batch_size=8, shuffle=True）
 - ✅ 数据验证（输入维度: [batch_size, sequence_length]，标签维度: [batch_size]）
 
+**数据集处理流程：**
+
+<img src="image/README/1767000838511.png" width="600" alt="Dataset Processing Flow"/>
+
+**数据加载器验证：**
+
+<img src="image/README/1767000860575.png" width="600" alt="DataLoader Verification"/>
+
 #### 6.4 模型初始化 (Initializing a model with pretrained weights)
 
 - ✅ 加载预训练GPT-2小模型（124M参数）
@@ -135,7 +143,13 @@ pip install -r requirements.txt
 - ✅ 替换输出层为分类层：`Linear(emb_dim=768, num_classes=2)`
 - ✅ 解冻最后一层和LayerNorm：允许微调
 
-**转移学习策略：** 冻结大部分参数，仅微调最后的transformer块和分类头
+**转移学习策略：** 冻结大部分参数，仅微调最后的transformer块和分类头，这样既能利用预训练知识，又能快速适应新任务
+
+**分类头架构：**
+
+<img src="image/README/1767001053566.png" width="600" alt="Classification Head Architecture"/>
+
+该图展示了GPT-2模型经过冻结参数和添加分类头后的结构，（最后一层transformer块和分类头）可参与梯度更新
 
 #### 6.6 损失和精度计算 (Calculating loss and accuracy)
 
@@ -147,8 +161,6 @@ pip install -r requirements.txt
 - ✅ `calc_loss_batch()`：计算单个batch的交叉熵损失
 - ✅ `calc_loss_loader()`：计算整个data loader的平均损失
 
-**关键指标（未训练状态）：**
+**损失和精度计算结果：**
 
-- train_accuracy: ~50%（随机基线）
-- val_accuracy: ~50%
-- test_accuracy: ~50%
+<img src="image/README/1767000933805.png" width="600" alt="Loss and Accuracy Calculation Results"/>
