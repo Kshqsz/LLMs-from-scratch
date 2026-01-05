@@ -218,3 +218,125 @@ pip install -r requirements.txt
     4. 提取最后token的logits
     5. argmax确定预测类别
   - **输出**："spam" 或 "not spam"
+
+### Ch07：指令微调 (Finetuning to Follow Instructions)
+
+**项目目标：** 基于预训练的GPT-2中型模型，使用指令数据集进行有监督微调，使模型能够遵循用户指令
+
+
+指令微调的完整流程：
+
+![1767602476986](image/README/1767602476986.png)
+
+#### 7.2 准备指令微调数据集 (Preparing a dataset for supervised instruction finetuning)
+
+- ✅ 下载并加载指令数据集（alpaca-like format）
+- ✅ 数据格式处理：包含instruction、input和output三个字段
+- ✅ 文本格式化：按照标准模板组织instruction、input和response
+- ✅ 数据分割：85% 训练集、10% 测试集、5% 验证集
+
+**指令数据格式示例：**
+
+```
+Below is an instruction that describes a task. Write a response that appropriately completes the request.
+
+### Instruction:
+[用户的指令]
+
+### Input:
+[可选的输入数据]
+
+### Response:
+[期望的模型输出]
+```
+
+#### 7.3 组织数据成训练批次 (Organizing data into training batches)
+
+
+![1767602517877](image/README/1767602517877.png)
+
+
+
+![1767602576497](image/README/1767602576497.png)
+
+- ✅ `InstructionDataset` 类实现：
+  - 加载指令数据集
+  - 文本分词和编码
+  - 动态最大长度计算
+- ✅ `custom_collate_fn` 实现：
+  - 自定义填充策略（pad_token_id = 50256）
+  - 为instruction部分（非response部分）的padding token设置ignore_index = -100
+  - 限制最大长度为1024 tokens
+  - 返回输入和目标张量对
+
+#### 7.4 创建数据加载器 (Creating data loaders for an instruction dataset)
+
+- ✅ 设备检测：支持CUDA、MPS或CPU
+- ✅ 训练/验证/测试数据加载器配置：
+  - batch_size: 8
+  - 训练集：shuffle=True, drop_last=True
+  - 验证/测试集：shuffle=False, drop_last=False
+- ✅ 数据验证（inputs和targets维度匹配）
+
+#### 7.5 加载预训练模型 (Loading a pretrained LLM)
+
+- ✅ 加载预训练GPT-2中型模型（355M参数）
+- ✅ 模型配置选项：
+  - GPT-2 Small (124M)
+  - GPT-2 Medium (355M) ← 本实验使用
+  - GPT-2 Large (774M)
+  - GPT-2 XL (1558M)
+- ✅ 权重加载验证：使用预训练权重生成文本测试
+- ✅ 模型置于eval模式进行推理测试
+
+**GPT-2中型模型配置：**
+
+- vocab_size: 50257
+- context_length: 1024
+- emb_dim: 1024
+- n_layers: 24
+- n_heads: 16
+
+#### 7.6 在指令数据上微调模型 (Finetuning the LLM on instruction data)
+
+- ✅ `train_model_simple()`：完整的微调训练循环
+
+  - 支持自定义epoch数、评估频率、评估迭代次数
+  - 定期在验证集上评估模型性能
+  - 返回训练/验证损失和token计数
+  - 支持生成示例输出进行定性评估
+
+**微调训练过程：**
+
+- 在每个epoch中遍历训练数据
+- 计算交叉熵损失（忽略padding部分的损失）
+- 反向传播更新模型参数
+- 定期在验证集上评估模型
+- 根据验证损失跟踪模型性能
+
+#### 7.7 提取和保存响应 (Extracting and saving responses)
+
+- ✅ 在测试集上生成模型响应：
+
+  - 使用微调后的模型进行推理
+  - 生成max_new_tokens=256的输出
+  - 清理response文本（移除模板部分）
+- ✅ 响应保存：将测试数据和模型生成的响应保存为JSON文件
+- ✅ 模型保存：将微调后的模型权重保存为 `.pth`文件
+
+#### 7.8 评估微调模型 (Evaluating the finetuned LLM)
+
+- ✅ 使用Ollama运行本地LLM进行评分：
+
+  - 集成Llama3作为评判模型
+  - 为每个模型响应生成0-100的评分
+- ✅ 评分过程：
+
+  - 对每条测试样本生成模型响应
+  - 使用Llama3对比正确答案和模型答案
+  - 计算平均评分
+- ✅ 评估指标：
+
+  - 个体样本评分：0-100分
+  - 整体平均评分：汇总所有测试样本的评分
+  - 定性评估：逐条对比正确答案和模型答案
