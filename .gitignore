@@ -50,6 +50,7 @@ dmypy.json
 .jupyter/
 
 # Data files
+aclImdb/
 data/
 *.csv
 *.json
