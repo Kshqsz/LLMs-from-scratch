@@ -223,10 +223,11 @@ pip install -r requirements.txt
 
 **项目目标：** 基于预训练的GPT-2中型模型，使用指令数据集进行有监督微调，使模型能够遵循用户指令
 
+**指令微调的完整流程：**
 
-指令微调的完整流程：
+<img src="image/README/1767602476986.png" width="700" alt="Instruction Finetuning Workflow"/>
 
-![1767602476986](image/README/1767602476986.png)
+该流程图展示了从数据准备、模型加载、参数冻结、到模型微调和评估的完整指令微调过程。
 
 #### 7.2 准备指令微调数据集 (Preparing a dataset for supervised instruction finetuning)
 
@@ -252,12 +253,17 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 #### 7.3 组织数据成训练批次 (Organizing data into training batches)
 
+**数据集结构与批处理流程：**
 
-![1767602517877](image/README/1767602517877.png)
+<img src="image/README/1767602517877.png" width="600" alt="Dataset Structure"/>
 
+该图展示了指令数据集的基本结构，包含instruction、input和output三个关键字段。
 
+**Batch处理中的目标标记策略：**
 
-![1767602576497](image/README/1767602576497.png)
+<img src="image/README/1767602576497.png" width="600" alt="Batch Target Masking"/>
+
+该图说明了在批处理中如何标记目标张量：仅对response部分计算loss，instruction和padding部分被设置为ignore_index（-100），这样模型只学习生成正确的response，而不对instruction部分进行优化。
 
 - ✅ `InstructionDataset` 类实现：
   - 加载指令数据集
