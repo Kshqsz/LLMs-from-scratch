@@ -288,12 +288,11 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 - ✅ 加载预训练GPT-2中型模型（355M参数）
 - ✅ 模型配置选项：
+
   - GPT-2 Small (124M)
   - GPT-2 Medium (355M) ← 本实验使用
   - GPT-2 Large (774M)
   - GPT-2 XL (1558M)
-- ✅ 权重加载验证：使用预训练权重生成文本测试
-- ✅ 模型置于eval模式进行推理测试
 
 **GPT-2中型模型配置：**
 
@@ -311,14 +310,6 @@ Below is an instruction that describes a task. Write a response that appropriate
   - 定期在验证集上评估模型性能
   - 返回训练/验证损失和token计数
   - 支持生成示例输出进行定性评估
-
-**微调训练过程：**
-
-- 在每个epoch中遍历训练数据
-- 计算交叉熵损失（忽略padding部分的损失）
-- 反向传播更新模型参数
-- 定期在验证集上评估模型
-- 根据验证损失跟踪模型性能
 
 #### 7.7 提取和保存响应 (Extracting and saving responses)
 
@@ -346,3 +337,137 @@ Below is an instruction that describes a task. Write a response that appropriate
   - 个体样本评分：0-100分
   - 整体平均评分：汇总所有测试样本的评分
   - 定性评估：逐条对比正确答案和模型答案
+
+---
+
+### Ch07-DPO：偏好优化 (Preference Tuning with DPO)
+
+**项目目标：** 使用Direct Preference Optimization (DPO)方法，基于人类偏好数据对已微调的模型进行进一步优化
+
+**DPO优化流程概览：**
+
+<img src="image/README/1770624092896.png" width="700" alt="DPO Optimization Workflow"/>
+
+该流程图展示了DPO方法的核心过程：使用偏好数据集（包含chosen和rejected响应）训练策略模型，同时使用参考模型提供基准，通过优化相对概率来对齐人类偏好。
+
+
+
+#### 1. 准备DPO偏好数据集 (Preparing a preference dataset for DPO)
+
+- ✅ 下载并加载偏好数据集（包含chosen和rejected响应）
+- ✅ 数据格式：包含instruction、input、output、chosen和rejected五个字段
+  - `chosen`：人类偏好的响应
+  - `rejected`：人类不偏好的响应
+- ✅ 数据分割：85% 训练集、10% 测试集、5% 验证集
+
+**偏好数据集结构：**
+
+```json
+{
+  "instruction": "用户指令",
+  "input": "可选输入",
+  "output": "标准输出",
+  "chosen": "偏好响应（更好的回答）",
+  "rejected": "非偏好响应（较差的回答）"
+}
+```
+
+#### 2. 创建偏好数据加载器 (Creating preference data loaders)
+
+- ✅ `PreferenceDataset` 类实现：
+
+  - 分别编码prompt、chosen和rejected响应
+  - 存储三种token序列供训练使用
+- ✅ `custom_collate_fn` 实现：
+
+  - 为chosen和rejected响应分别创建mask
+  - `mask_prompt_tokens=True`：仅对response部分计算loss
+  - 动态padding到batch内最大长度
+  - 返回包含prompt、chosen、rejected及对应mask的字典
+- ✅ 数据验证：
+
+  - 检查mask正确标记了response部分
+  - 验证padding token被正确处理
+
+#### 3. 加载策略模型和参考模型 (Loading policy and reference models)
+
+- ✅ Policy Model（策略模型）：
+
+  - 加载Ch07微调后的模型权重
+  - 训练过程中参数会被更新
+  - 用于生成最终的响应
+- ✅ Reference Model（参考模型）：
+
+  - 加载相同的Ch07微调后的模型权重
+  - 参数保持冻结，不参与训练
+  - 用于计算KL散度，防止策略模型偏离太远
+
+**策略模型与参考模型的协同机制：**
+
+<img src="image/README/1770624112406.png" width="650" alt="Policy and Reference Model Interaction"/>
+
+该图说明了DPO训练中策略模型和参考模型的关系：策略模型负责学习并生成更符合人类偏好的响应，而参考模型作为固定基准，确保策略模型不会过度偏离原始的指令遵循能力。两者共同计算DPO损失，实现偏好对齐。
+
+#### 4. 实现DPO损失函数 (Implementing DPO loss functions)
+
+- ✅ `compute_logprobs()`：计算对数概率
+
+  - 使用log_softmax获取token的对数概率
+  - 通过torch.gather选择对应label的概率
+  - 使用mask仅对response部分计算平均概率
+- ✅ `compute_dpo_loss()`：核心DPO损失计算
+
+  - 计算策略模型的log ratio：chosen vs rejected
+  - 计算参考模型的log ratio：chosen vs rejected
+  - 损失函数：`-log_sigmoid(β * (model_logratios - ref_logratios))`
+  - 返回损失、chosen奖励和rejected奖励
+
+**DPO损失公式核心思想：**
+
+- 最大化chosen响应相对于rejected响应的概率比
+- 使用参考模型作为基准，避免过度优化
+- β参数控制优化强度（本实验使用0.1）
+
+#### 5. DPO模型训练 (Training with DPO)
+
+- ✅ `train_model_dpo_simple()`：DPO训练循环
+
+  - 在每个batch上计算DPO损失
+  - 同时跟踪chosen和rejected的奖励边际
+  - 定期评估训练和验证的损失及奖励
+  - 生成示例输出进行定性评估
+- ✅ 训练配置：
+
+  - 优化器：AdamW（lr=5e-6, weight_decay=0.01）
+  - Epochs：1
+  - Beta：0.1
+  - 评估频率：每5步
+- ✅ 关键指标：
+
+  - **训练/验证损失**：DPO损失值
+  - **Reward Margin**：chosen_reward - rejected_reward
+  - 更高的reward margin表示模型更好地区分偏好
+
+#### 6. 模型评估与对比 (Evaluation and comparison)
+
+- ✅ 对比三种输出：
+
+  - **正确答案**：数据集中的标准输出
+  - **Reference Model**：SFT微调后的基础模型
+  - **Policy Model**：DPO优化后的模型
+- ✅ 评估维度：
+
+  - 响应质量：是否更符合人类偏好
+  - 响应风格：是否更加准确和有帮助
+  - 对比分析：DPO前后的改进
+- ✅ 损失曲线可视化：
+
+  - 绘制训练/验证损失随epoch变化
+  - 观察模型收敛情况
+
+**DPO优势总结：**
+
+- ✅ 无需显式奖励模型
+- ✅ 训练更稳定（相比RLHF）
+- ✅ 计算效率更高
+- ✅ 直接优化策略模型以匹配人类偏好
