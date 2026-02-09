@@ -350,8 +350,6 @@ Below is an instruction that describes a task. Write a response that appropriate
 
 该流程图展示了DPO方法的核心过程：使用偏好数据集（包含chosen和rejected响应）训练策略模型，同时使用参考模型提供基准，通过优化相对概率来对齐人类偏好。
 
-
-
 #### 1. 准备DPO偏好数据集 (Preparing a preference dataset for DPO)
 
 - ✅ 下载并加载偏好数据集（包含chosen和rejected响应）
@@ -471,3 +469,127 @@ Below is an instruction that describes a task. Write a response that appropriate
 - ✅ 训练更稳定（相比RLHF）
 - ✅ 计算效率更高
 - ✅ 直接优化策略模型以匹配人类偏好
+
+---
+
+### Appendix D：训练循环优化技巧 (Adding Bells and Whistles to the Training Loop)
+
+**项目目标：** 为GPT模型的训练循环添加高级优化技术，包括学习率调度、梯度裁剪等，以提升训练稳定性和模型性能
+
+#### D.1 学习率预热 (Learning rate warmup)
+
+- ✅ 实现线性学习率预热策略
+
+  - 从初始学习率（initial_lr）逐步增长到峰值学习率（peak_lr）
+  - 预热步数（warmup_steps）通常设置为总训练步数的10-20%
+  - 避免训练初期学习率过高导致的不稳定
+- ✅ 学习率预热的作用：
+
+  - **防止早期梯度爆炸**：模型参数初始化时，大学习率可能导致梯度不稳定
+  - **提升训练稳定性**：平滑的学习率增长使模型逐步适应训练数据
+  - **改善最终性能**：更稳定的训练过程通常能达到更好的收敛点
+
+**实现公式：**
+
+```
+if global_step < warmup_steps:
+    lr = initial_lr + (peak_lr - initial_lr) * (global_step / warmup_steps)
+```
+
+#### D.2 余弦衰减调度 (Cosine decay)
+
+- ✅ 实现余弦衰减学习率调度策略
+
+  - 预热阶段后，学习率按余弦曲线从峰值衰减到最小值
+  - 提供平滑的学习率下降，避免突然的跳变
+  - 最小学习率（min_lr）通常设置为峰值学习率的10%
+- ✅ 余弦衰减的优势：
+
+  - **平滑衰减**：避免阶梯式学习率下降带来的训练波动
+  - **更好的收敛**：逐渐降低的学习率有助于模型精细调整参数
+  - **广泛应用**：在大规模语言模型训练中的标准做法
+
+**实现公式：**
+
+```
+progress = (global_step - warmup_steps) / (total_steps - warmup_steps)
+lr = min_lr + (peak_lr - min_lr) * 0.5 * (1 + cos(π * progress))
+```
+
+**学习率曲线特点：**
+
+- 前期：线性预热（0 → peak_lr）
+- 中期：缓慢衰减（保持较高学习率）
+- 后期：快速衰减（逼近min_lr）
+
+**学习率调度可视化：**
+
+<img src="image/README/1770628784842.png" width="600" alt="Learning Rate Schedule with Warmup and Cosine Decay"/>
+
+该图展示了完整的学习率调度曲线：起始阶段进行线性预热，随后按照余弦函数平滑衰减至最小学习率。这种调度策略结合了预热的稳定性和余弦衰减的收敛优势，是现代大型语言模型训练的标准配置。
+
+#### D.3 梯度裁剪 (Gradient clipping)
+
+- ✅ 实现梯度范数裁剪（Gradient Norm Clipping）
+
+  - 限制梯度的L2范数不超过设定阈值（通常为1.0）
+  - 防止梯度爆炸导致的训练崩溃
+  - 在预热阶段结束后开始应用
+- ✅ 梯度裁剪的必要性：
+
+  - **防止梯度爆炸**：Transformer模型训练中常见问题
+  - **稳定训练**：特别是在使用较大学习率时
+  - **保持梯度方向**：只缩放梯度大小，不改变方向
+
+**实现方式：**
+
+```python
+if global_step >= warmup_steps:
+    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+```
+
+**关键参数：**
+
+- `max_norm=1.0`：梯度范数的最大值
+- 仅在预热后应用，避免影响预热阶段的学习率调整
+
+#### D.4 改进的训练函数 (The modified training function)
+
+- ✅ `train_model()` 整合所有优化技术：
+
+  - 学习率预热 + 余弦衰减调度
+  - 梯度裁剪（在预热后应用）
+  - 定期评估与样本生成
+  - 损失和学习率跟踪
+- ✅ 函数参数配置：
+
+  - `n_epochs`：训练轮数（15轮）
+  - `warmup_steps`：预热步数
+  - `initial_lr`：初始学习率（1e-5）
+  - `peak_lr`：峰值学习率（0.001）
+  - `min_lr`：最小学习率（1e-5）
+  - `weight_decay`：权重衰减（0.1）
+- ✅ 训练过程监控：
+
+  - **损失曲线**：训练/验证损失随步数变化
+  - **学习率曲线**：可视化学习率调度策略
+  - **生成样本**：每个epoch后生成文本评估模型质量
+  - **梯度统计**：监控最大梯度值，确认裁剪效果
+
+**完整训练流程：**
+
+1. **初始化阶段**：设置优化器、学习率参数、总训练步数
+2. **训练循环**：
+   - 每步动态调整学习率（预热或余弦衰减）
+   - 计算损失并反向传播
+   - 应用梯度裁剪（预热后）
+   - 更新模型参数
+3. **定期评估**：计算训练/验证损失
+4. **文本生成**：每轮结束后生成样本
+
+**优化效果对比：**
+
+- ❌ 无优化：训练不稳定，容易发散
+- ✅ 仅预热：改善初期稳定性
+- ✅ 预热+余弦衰减：更好的收敛性能
+- ✅ 完整优化：最稳定的训练过程和最佳性能
