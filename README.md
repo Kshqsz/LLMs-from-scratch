@@ -593,3 +593,64 @@ if global_step >= warmup_steps:
 - ✅ 仅预热：改善初期稳定性
 - ✅ 预热+余弦衰减：更好的收敛性能
 - ✅ 完整优化：最稳定的训练过程和最佳性能
+
+---
+
+### Appendix E：LoRA参数高效微调 (Parameter-efficient Finetuning with LoRA)
+
+**项目目标：** 使用LoRA (Low-Rank Adaptation) 技术进行参数高效微调，大幅减少可训练参数数量的同时保持模型性能
+
+**LoRA技术原理概览：**
+
+<img src="image/README/1770710269490.png" width="650" alt="LoRA Principle Overview"/>
+
+该图展示了LoRA的核心思想：通过低秩矩阵分解来近似权重更新。原始预训练权重W保持冻结，仅训练两个小矩阵A和B，其乘积ΔW=AB作为权重增量，从而实现参数高效的微调。
+
+#### E.2 数据集准备 (Preparing the dataset)
+
+- ✅ 使用SMS垃圾短信数据集
+- ✅ 数据平衡和分割（70% 训练，10% 验证，20% 测试）
+- ✅ 创建数据加载器（batch_size=8）
+
+#### E.3 模型初始化 (Initializing the model)
+
+- ✅ 加载预训练GPT-2小模型（124M参数）
+- ✅ 添加分类头用于垃圾短信分类任务
+- ✅ 初始基准测试（未微调）
+
+#### E.4 使用LoRA进行参数高效微调 (Parameter-efficient finetuning with LoRA)
+
+**LoRA层的具体实现：**
+
+<img src="image/README/1770710284262.png" width="600" alt="LoRA Layer Implementation"/>
+
+该图详细说明了LoRA层的实现方式：输入x通过原始冻结的Linear层得到Wx，同时通过LoRA路径得到(α/r)×xAB，两者相加得到最终输出。这种设计使得模型可以在不修改原始权重的情况下，通过训练少量参数来适应新任务。
+
+- ✅ **LoRA核心原理**：
+
+  - 将权重更新分解为低秩矩阵：ΔW = A × B
+  - A: (in_dim, rank)，B: (rank, out_dim)
+  - 原始权重保持冻结，仅训练A和B矩阵
+- ✅ **实现细节**：
+
+  - `LoRALayer`：实现低秩分解层
+  - `LinearWithLoRA`：将原始Linear层与LoRA层组合
+  - `replace_linear_with_lora()`：自动替换模型中所有Linear层
+- ✅ **参数配置**：
+
+  - rank=16：低秩矩阵的秩
+  - alpha=16：缩放因子
+  - 仅训练LoRA参数，冻结原模型参数
+- **LoRA优势：**
+- ✅ **参数效率**：相比全量微调减少99%+的可训练参数
+- ✅ **内存节省**：显著降低GPU内存需求
+- ✅ **训练速度**：更快的训练和更新速度
+- ✅ **性能保持**：在大多数任务上达到接近全量微调的效果
+- ✅ **模块化**：可轻松切换或组合不同的LoRA权重
+
+**最终结果：**
+
+- 训练准确率：~97-99%
+- 验证准确率：~96-98%
+- 测试准确率：~95-97%
+- 与全量微调性能相当，但参数量大幅减少
