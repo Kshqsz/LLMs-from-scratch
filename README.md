@@ -8,7 +8,7 @@
 
 ```bash
 # 创建虚拟环境
-python -m venv .venv
+uv venv --python=python3.11 
 
 # 激活虚拟环境
 source .venv/bin/activate
