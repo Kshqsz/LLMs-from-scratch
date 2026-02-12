@@ -14,7 +14,7 @@ uv venv --python=python3.11
 source .venv/bin/activate
 
 # 安装依赖
-pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 ## 📂 项目进度
